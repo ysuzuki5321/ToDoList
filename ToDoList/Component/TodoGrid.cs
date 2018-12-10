@@ -1,13 +1,11 @@
-﻿using System;
+﻿using MetroFramework.Controls;
+using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using MetroFramework.Controls;
-using ToDoList.Model;
 using System.Windows.Forms;
 using ToDoList.Helper;
-using System.Drawing;
+using ToDoList.Model;
 
 namespace ToDoList.Component
 {
@@ -44,7 +42,7 @@ namespace ToDoList.Component
             CellValueChanged += CellValueChangedEvent;
             UserDeletingRow += DeletingRowEvent;
             _bindingSource.DataSourceChanged += DataSourceChangedEvent;
-            
+
         }
 
         private void SetupDropDown()
@@ -53,7 +51,7 @@ namespace ToDoList.Component
             (Columns[nameof(TodoType)] as DataGridViewComboBoxColumn).SetUpTodoTypeBinding(_repository.TodoTypes());
         }
 
-        public void TodoTypeFilter(TodoType type,bool withDeleteData)
+        public void TodoTypeFilter(TodoType type, bool withDeleteData)
         {
             if (type.Id < 0)
                 if (withDeleteData)
@@ -89,6 +87,8 @@ namespace ToDoList.Component
 
         private void RowValidatingEvent(object sender, DataGridViewCellCancelEventArgs e)
         {
+            if (IsOutOfRange(e.RowIndex)) return;
+
             var result = _repository.TodoTableUpdate(GetBindingData(e.RowIndex));
             switch (result)
             {
@@ -101,15 +101,20 @@ namespace ToDoList.Component
             }
         }
 
+        private bool IsOutOfRange(int index) => GetTodoList().Count() <= index;
         private Todo GetBindingData(int index)
         {
-            var items = _bindingSource.DataSource as List<Todo>;
-            return items[index];
+            return GetTodoList()[index];
+        }
+
+        private List<Todo> GetTodoList()
+        {
+            return _bindingSource.DataSource as List<Todo>;
         }
 
         private void CellEnterEvent(object sender, DataGridViewCellEventArgs e)
         {
-            if(Columns[e.ColumnIndex] is DataGridViewComboBoxColumn)
+            if (Columns[e.ColumnIndex] is DataGridViewComboBoxColumn)
             {
                 BeginEdit(false);
                 var edit = EditingControl as DataGridViewComboBoxEditingControl;
@@ -138,25 +143,19 @@ namespace ToDoList.Component
             ChangeRowColor(false, rowIndex, Color.White);
         }
 
-        private void ChangeRowColor(bool cond,int rowIndex,Color changeColor)
+        private void ChangeRowColor(bool cond, int rowIndex, Color changeColor)
         {
             if (!_defaultRowColor.ContainsKey(rowIndex))
                 _defaultRowColor.Add(rowIndex, Rows[rowIndex].DefaultCellStyle.BackColor);
-            if (cond)
-            {
-                Rows[rowIndex].DefaultCellStyle.BackColor = changeColor;
-            }
-            else
-            {
-                Rows[rowIndex].DefaultCellStyle.BackColor = _defaultRowColor[rowIndex];
-            }
+            Rows[rowIndex].DefaultCellStyle.BackColor
+                = cond ? changeColor : _defaultRowColor[rowIndex];
         }
 
         private void DataSourceChangedEvent(object sender, EventArgs e)
         {
-            var list = _bindingSource.DataSource as List<Todo>;
+            var list = GetTodoList();
             if (list == null) return;
-            for(var index = 0;index < list.Count();index++)
+            for (var index = 0; index < list.Count(); index++)
             {
                 ChangeDisabledRowColor(index);
             }
@@ -172,6 +171,6 @@ namespace ToDoList.Component
                 _repository.Delete(GetBindingData(e.Row.Index));
             }
             else e.Cancel = true;
-        } 
+        }
     }
 }
